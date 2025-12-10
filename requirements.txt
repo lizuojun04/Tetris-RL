@@ -1,0 +1,10 @@
+torch
+torchvision
+torchaudio
+
+numpy<2.0
+opencv-python
+Pillow
+matplotlib
+tqdm
+tensorboard
