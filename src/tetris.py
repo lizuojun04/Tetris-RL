@@ -100,7 +100,13 @@ class Tetris:
         holes = self.get_holes(board)
         bumpiness, height = self.get_bumpiness_and_height(board)
 
-        return torch.FloatTensor([lines_cleared, holes, bumpiness, height])
+        grid = np.array(board, dtype = np.float32)
+        grid[grid > 0] = 1.0
+        # (20, 10) -> (1, 20, 10)
+        # for CNN channel
+        grid_tensor = torch.from_numpy(grid).unsqueeze(0)
+
+        return grid_tensor, torch.FloatTensor([lines_cleared, holes, bumpiness, height])
 
     def get_holes(self, board):
         num_holes = 0
@@ -146,7 +152,8 @@ class Tetris:
                     pos["y"] += 1
                 self.truncate(piece, pos)
                 board = self.store(piece, pos)
-                states[(x, i)] = self.get_state_properties(board)
+                grid_t, feat_t = self.get_state_properties(board)
+                states[(x, i)] = (grid_t, feat_t)
             curr_piece = self.rotate(curr_piece)
         return states
 

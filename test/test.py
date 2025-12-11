@@ -5,7 +5,7 @@ import argparse
 import torch
 import cv2
 from src.tetris import Tetris
-from src.model import TestModel
+from src.agents.model import TestModel, TetrisRL
 
 
 def get_args():
@@ -28,11 +28,14 @@ def test(opt):
         torch.cuda.manual_seed(123)
     else:
         torch.manual_seed(123)
+    """
     if torch.cuda.is_available():
         model = torch.load("{}/tetris".format(opt.saved_path), weights_only=False)
     else:
         model = torch.load("{}/tetris".format(opt.saved_path), map_location=lambda storage, loc: storage, weights_only=False)
+    """
     # model = TestModel()
+    model = TetrisRL()
     model.eval()
     env = Tetris(width=opt.width, height=opt.height, block_size=opt.block_size)
     env.reset()
@@ -42,11 +45,16 @@ def test(opt):
                           (int(1.5*opt.width*opt.block_size), opt.height*opt.block_size))
     while True:
         next_steps = env.get_next_states()
-        next_actions, next_states = zip(*next_steps.items())
-        next_states = torch.stack(next_states)
+        next_actions = list(next_steps.keys())
+        # stack for batch dimension
+        # (states_num, 1, 20, 10)
+        next_grids = torch.stack([v[0] for v in next_steps.values()])
+        # (status_num, 4)
+        next_feats = torch.stack([v[1] for v in next_steps.values()])
         if torch.cuda.is_available():
-            next_states = next_states.cuda()
-        predictions = model(next_states)[:, 0]
+            next_grids = next_grids.cuda()
+            next_feats = next_feats.cuda()
+        predictions = model(next_grids, next_feats)[:, 0]
         index = torch.argmax(predictions).item()
         action = next_actions[index]
         _, done = env.step(action, render=True, video=out)
