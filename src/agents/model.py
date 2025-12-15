@@ -50,3 +50,15 @@ class TetrisRL(nn.Module):
         q_values = self.fusion_fc2(combined)
 
         return q_values
+
+    def get_action(self, next_steps):
+        next_actions = list(next_steps.keys())
+        next_grids = torch.stack([v[0] for v in next_steps.values()])
+        next_feats = torch.stack([v[1] for v in next_steps.values()])
+        if torch.cuda.is_available():
+            next_grids = next_grids.cuda()
+            next_feats = next_feats.cuda()
+        predictions = self.forward(next_grids, next_feats)[:, 0]
+        index = torch.argmax(predictions).item()
+        action = next_actions[index]
+        return action
