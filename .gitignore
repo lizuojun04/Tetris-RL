@@ -1,4 +1,7 @@
 pyrightconfig.json
+*.mp4
+checkpoints/*
+!checkpoints/best/
 
 __pycache__/
 *.pyc
@@ -6,3 +9,4 @@ __pycache__/
 *.pyd
 
 .vscode/
+
