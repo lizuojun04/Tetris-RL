@@ -3,8 +3,6 @@ import torch.nn as nn
 import random
 from collections import deque
 
-
-
 class DQNTrain:
     def __init__(self,
                  save_path,
@@ -114,14 +112,24 @@ class DQNTrain:
                     self.train_model.train()
 
                 action = next_actions[index]
-                
+                current_max_height = next_feats[index][-1].item()
                 current_state_save = (next_grids[index].cpu(), next_feats[index].cpu())
 
                 score, done = self.env.step(action, render=False)
 
+                reward = score / 10.0
+                safe_threshold = 1 / 2 * self.env.height
+
+                if not done:
+                    if current_max_height > safe_threshold:
+                        penalty = (current_max_height - safe_threshold) ** 2 * 0.1 
+                        reward -= penalty
+                else:
+                    reward = -50.0
+
                 # 计算真实 q 值
                 if done:
-                    target_q = score / 10.0
+                    target_q = reward
                     next_steps = None # 游戏结束，没有下一步了
                     final_score = self.env.score
                 else:
@@ -139,7 +147,7 @@ class DQNTrain:
                     
                     max_q = torch.max(next_preds).item()
                     # 加上缩放
-                    target_q = score / 10.0 + self.gamma * max_q
+                    target_q = reward + self.gamma * max_q
                     next_steps = next_next_steps
 
                 # 储存 q 值
