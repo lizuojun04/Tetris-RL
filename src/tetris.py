@@ -98,7 +98,7 @@ class Tetris:
     def get_state_properties(self, board):
         lines_cleared, board = self.check_cleared_rows(board)
         holes = self.get_holes(board)
-        bumpiness, height = self.get_bumpiness_and_height(board)
+        bumpiness, total_height, max_height = self.get_bumpiness_and_height(board)
 
         grid = np.array(board, dtype = np.float32)
         grid[grid > 0] = 1.0
@@ -106,7 +106,7 @@ class Tetris:
         # for CNN channel
         grid_tensor = torch.from_numpy(grid).unsqueeze(0)
 
-        return grid_tensor, torch.FloatTensor([lines_cleared, holes, bumpiness, height])
+        return grid_tensor, torch.FloatTensor([lines_cleared, holes, bumpiness, total_height, max_height])
 
     def get_holes(self, board):
         num_holes = 0
@@ -123,11 +123,12 @@ class Tetris:
         invert_heights = np.where(mask.any(axis=0), np.argmax(mask, axis=0), self.height)
         heights = self.height - invert_heights
         total_height = np.sum(heights)
+        max_height = np.max(heights)
         currs = heights[:-1]
         nexts = heights[1:]
         diffs = np.abs(currs - nexts)
         total_bumpiness = np.sum(diffs)
-        return total_bumpiness, total_height
+        return total_bumpiness, total_height, max_height
 
     """
     return {(x, rotate number): board state}

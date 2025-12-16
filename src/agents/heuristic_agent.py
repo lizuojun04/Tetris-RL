@@ -9,7 +9,8 @@ class HeuristicAgent:
             "lines": 0.76,
             "holes": -0.36,
             "bumpiness": -0.18,
-            "height": -0.51
+            "total_height": -0.51,
+            "max_height": 0
         }
 
     def get_action(self, next_steps):
@@ -25,12 +26,14 @@ class HeuristicAgent:
             lines = feats[0].item()
             holes = feats[1].item()
             bumpiness = feats[2].item()
-            height = feats[3].item()
+            total_height = feats[3].item()
+            max_height = feats[4].item()
 
             score = (self.weights["lines"] * lines +
                      self.weights["holes"] * holes +
                      self.weights["bumpiness"] * bumpiness +
-                     self.weights["height"] * height)
+                     self.weights["total_height"] * total_height,
+                     self.weights["max_height"] * max_height)
 
             if score > best_score:
                 best_score = score

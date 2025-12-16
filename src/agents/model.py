@@ -11,7 +11,7 @@ class TestModel(nn.Module):
 
 class TetrisRL(nn.Module):
     def __init__(self, 
-                 num_featurs = 4,
+                 num_featurs = 5,
                  board_height = 20,
                  board_width = 10,
                  grid_channel_in = 1):
@@ -37,7 +37,7 @@ class TetrisRL(nn.Module):
         next_grids = torch.stack([v[0] for v in next_steps.values()])
         next_feats = torch.stack([v[1] for v in next_steps.values()])
         if torch.cuda.is_available():
-            next_grids = next_feats.cuda()
+            next_grids = next_grids.cuda()
             next_feats = next_feats.cuda()
         predictions = self.forward(next_grids, next_feats)
         index = torch.argmax(predictions).item()
