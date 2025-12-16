@@ -1,6 +1,7 @@
 """
 @author: Viet Nguyen <nhviet1009@gmail.com>
 """
+import os
 import argparse
 import torch
 import cv2
@@ -18,10 +19,12 @@ def get_args():
     parser.add_argument("--block_size", type=int, default=30, help="Size of a block")
     parser.add_argument("--fps", type=int, default=300, help="frames per second")
     parser.add_argument("--saved_path", type=str, default="checkpoints")
-    parser.add_argument("--output", type=str, default="output.mp4")
+    parser.add_argument("--output_path", type=str, default="output_video")
     parser.add_argument("--agent", type=str, default="heuristic",
                         choices=["base", "heuristic"],
                         help="Choose the agent: base, heuristic")
+    parser.add_argument("--test", type=int, default=10, help="test times")
+    parser.add_argument("--render", action="store_true", help="Enable rendering to video.")
 
     args = parser.parse_args()
     return args
@@ -43,28 +46,40 @@ def test(opt):
     else:
         agent = TetrisRL()
         if torch.cuda.is_available():
-            agent_dict = torch.load("./checkpoints/DQN_best.pt", weights_only=False)
+            agent_dict = torch.load("./checkpoints/best/DQN_best.pt", weights_only=False)
         else:
-            agent_dict = torch.load("./checkpoints/DQN_best.pt", map_location=lambda storage, loc: storage, weights_only=False)
+            agent_dict = torch.load("./checkpoints/best/DQN_best.pt", map_location=lambda storage, loc: storage, weights_only=False)
         agent.load_state_dict(agent_dict)
         agent.eval()
         if torch.cuda.is_available():
             agent.cuda()
 
     env = Tetris(width=opt.width, height=opt.height, block_size=opt.block_size)
-    env.reset()
-    out = cv2.VideoWriter(opt.output, cv2.VideoWriter_fourcc(*"MJPG"), opt.fps,
-                          (int(1.5*opt.width*opt.block_size), opt.height*opt.block_size))
-    while True:
-        next_steps = env.get_next_states()
-        action = agent.get_action(next_steps)
-        _, done = env.step(action, render=True, video=out)
 
-        if done:
-            out.release()
-            break
+    test_times = opt.test
+    total_score = 0
+    for i in range(test_times):
+        if opt.render:
+            video_name = os.path.join(opt.output_path, f"game_{i}.mp4")
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v") 
+            out = cv2.VideoWriter(video_name, fourcc, opt.fps,
+                                  (int(1.5*opt.width*opt.block_size), opt.height*opt.block_size))
+        else:
+            out = None
+        env.reset()
+        while True:
+            next_steps = env.get_next_states()
+            action = agent.get_action(next_steps)
+            _, done = env.step(action, render=opt.render, video=out)
 
-    print(env.score)
+            if done:
+                if out is not None:
+                    out.release()
+                break
+        print(env.score)
+        total_score += env.score
+
+    print(total_score/test_times)
         
 
 
