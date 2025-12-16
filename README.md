@@ -13,9 +13,21 @@ pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cu1
 
 ---
 
+#### 测试
+
 ```sh
 cd Tetris-RL
-python -m test.test
+python -m test.test --test 1 --render
+```
+
+- `--test <number>` 表示要测试次数
+- `--render` 表示是否要启用视频，如果不想用视频，不添加这个选项就可以
+
+#### 训练
+
+```sh
+cd Tetris-RL
+python -m train.train
 ```
 
 ## Agent
