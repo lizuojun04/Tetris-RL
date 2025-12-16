@@ -41,10 +41,12 @@ def test(opt):
     if opt.agent == "heuristic":
         agent = HeuristicAgent()
     else:
-        if opt.agent == "base":
-            agent = TetrisRL()
+        agent = TetrisRL()
+        if torch.cuda.is_available():
+            agent_dict = torch.load("./checkpoints/DQN_best.pt", weights_only=False)
         else:
-            raise ValueError(f"Unknown agent: {opt.agent}")
+            agent_dict = torch.load("./checkpoints/DQN_best.pt", map_location=lambda storage, loc: storage, weights_only=False)
+        agent.load_state_dict(agent_dict)
         agent.eval()
         if torch.cuda.is_available():
             agent.cuda()
