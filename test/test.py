@@ -20,7 +20,7 @@ def get_args():
     parser.add_argument("--fps", type=int, default=300, help="frames per second")
     parser.add_argument("--saved_path", type=str, default="checkpoints")
     parser.add_argument("--output_path", type=str, default="output_video")
-    parser.add_argument("--agent", type=str, default="heuristic",
+    parser.add_argument("--agent", type=str, default="base",
                         choices=["base", "heuristic"],
                         help="Choose the agent: base, heuristic")
     parser.add_argument("--test", type=int, default=10, help="test times")
@@ -31,6 +31,9 @@ def get_args():
 
 
 def test(opt):
+    if not os.path.exists(opt.output_path):
+        os.mkdir(opt.output_path)
+
     if torch.cuda.is_available():
         torch.cuda.manual_seed(123)
     else:
