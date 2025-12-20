@@ -4,23 +4,26 @@ import random
 from collections import deque
 
 class DQNTrain:
-    def __init__(self,
-                 save_path,
-                 env,
-                 train_model,
-                 target_model,
-                 optimizer,
-                 criterion,
-                 memory_size = 5000,
-                 batch_size = 512,
-                 window_size = 50,
-                 gamma = 0.99,
-                 epochs = 3000,
-                 fresh_epoch = 10,
-                 save_epoch = 50,
-                 epsilon = 1.0,
-                 epsilon_min = 0.01,
-                 epsilon_decay = 0.995):
+    def __init__(
+        self,
+        save_path,
+        env,
+        train_model,
+        target_model,
+        optimizer,
+        criterion,
+        memory_size = 5000,
+        batch_size = 512,
+        window_size = 50,
+        gamma = 0.99,
+        height_penalty_scalar = 0.1,
+        steps_num = 3,
+        epochs = 3000,
+        fresh_epoch = 10,
+        save_epoch = 50,
+        epsilon = 1.0,
+        epsilon_min = 0.01,
+        epsilon_decay = 0.995):
         self.save_path = save_path
         self.env = env
         self.train_model = train_model
@@ -31,6 +34,9 @@ class DQNTrain:
         self.batch_size = batch_size
         self.window_size = window_size
         self.gamma = gamma
+        self.height_penalty_scalar = height_penalty_scalar
+        self.steps_num = steps_num
+        self.steps_buffer = deque(maxlen = self.steps_num)
         self.epochs = epochs
         self.fresh_epoch = fresh_epoch
         self.save_epoch = save_epoch
@@ -122,7 +128,7 @@ class DQNTrain:
 
                 if not done:
                     if current_max_height > safe_threshold:
-                        penalty = (current_max_height - safe_threshold) ** 2 * 0.1 
+                        penalty = (current_max_height - safe_threshold) ** 2 * self.height_penalty_scalar
                         reward -= penalty
                 else:
                     reward = -50.0
@@ -141,11 +147,20 @@ class DQNTrain:
                     if torch.cuda.is_available():
                         n_grids = n_grids.cuda()
                         n_feats = n_feats.cuda()
-                    
+
+                    # 实现 double DQN
+                    # train_model 用来选 action
+                    # target_model 用来评估 q value
+                    self.train_model.eval()
                     with torch.no_grad():
-                        next_preds = self.target_model(n_grids, n_feats).squeeze(1)
+                        next_preds_from_train = self.train_model(n_grids, n_feats).squeeze(1)
+                        best_next_action_index = torch.argmax(next_preds_from_train).item()
+                    self.train_model.train()
+
+                    with torch.no_grad():
+                        next_preds_from_target = self.target_model(n_grids, n_feats).squeeze(1)
+                        max_q = next_preds_from_target[best_next_action_index].item()
                     
-                    max_q = torch.max(next_preds).item()
                     # 加上缩放
                     target_q = reward + self.gamma * max_q
                     next_steps = next_next_steps
