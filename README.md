@@ -17,7 +17,7 @@ pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cu1
 
 ```sh
 cd Tetris-RL
-python -m test.test --test 1 --render
+python -m test.test --agent dqn --test 1 --render
 ```
 
 - `--test <number>` 表示要测试次数
@@ -27,7 +27,7 @@ python -m test.test --test 1 --render
 
 ```sh
 cd Tetris-RL
-python -m train.train
+python -m train.train --agent dqn
 ```
 
 ## Agent
