@@ -106,9 +106,6 @@ class DQNTrain:
         recent_scores = deque(maxlen = self.window_size)
         max_avg_score = 0
 
-        # final_exploration_step = 200000
-        # epsilon_decay_value = (self.epsilon - self.epsilon_min) / final_exploration_step
-
         for epoch in range(self.epochs):
             self.env.reset()
             done = False
@@ -124,9 +121,6 @@ class DQNTrain:
                 self.total_steps += 1
                 if self.total_steps % self.target_update_steps == 0:
                     self.target_model.load_state_dict(self.train_model.state_dict())
-
-                # if self.epsilon > self.epsilon_min:
-                    # self.epsilon -= epsilon_decay_value
 
                 # 采样
                 next_actions = list(next_steps.keys())
