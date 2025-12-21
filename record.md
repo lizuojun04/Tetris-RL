@@ -39,4 +39,4 @@ epsilon_min=0.01,
 epsilon_decay=0.995
 ```
 500 tests
-59251.846
+58068.592

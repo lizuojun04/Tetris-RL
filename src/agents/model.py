@@ -16,6 +16,8 @@ class TetrisRL(nn.Module):
                  board_width = 10,
                  grid_channel_in = 1):
         super(TetrisRL, self).__init__()
+        norm_values = torch.tensor([4.0, 50.0, 100.0, 200.0, 20.0], dtype=torch.float32)
+        self.register_buffer('feature_norm', norm_values)
         self.fc1 = nn.Linear(num_featurs, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 1)
@@ -28,6 +30,7 @@ class TetrisRL(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, grid, feature):
+        feature = feature / self.feature_norm
         x = torch.relu(self.fc1(feature))
         x = torch.relu(self.fc2(x))
         return self.fc3(x)

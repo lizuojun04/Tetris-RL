@@ -22,6 +22,7 @@ class DQNTrain:
         safe_height_factor=0.5,
         steps_num=1,
         epochs=3000,
+        target_update_steps=2000,
         fresh_epoch=10,
         save_epoch=50,
         epsilon=1.0,
@@ -44,6 +45,8 @@ class DQNTrain:
         self.steps_num = steps_num
         self.steps_buffer = deque(maxlen=self.steps_num)
         self.epochs = epochs
+        self.target_update_steps = target_update_steps
+        self.total_steps = 0
         self.fresh_epoch = fresh_epoch
         self.save_epoch = save_epoch
         self.epsilon = epsilon
@@ -103,10 +106,12 @@ class DQNTrain:
         recent_scores = deque(maxlen = self.window_size)
         max_avg_score = 0
 
+        # final_exploration_step = 200000
+        # epsilon_decay_value = (self.epsilon - self.epsilon_min) / final_exploration_step
+
         for epoch in range(self.epochs):
             self.env.reset()
             done = False
-            steps = 0
             final_score = 0
             loss = 0
             total_loss = 0
@@ -116,6 +121,13 @@ class DQNTrain:
             next_steps = self.env.get_next_states()
 
             while not done:
+                self.total_steps += 1
+                if self.total_steps % self.target_update_steps == 0:
+                    self.target_model.load_state_dict(self.train_model.state_dict())
+
+                # if self.epsilon > self.epsilon_min:
+                    # self.epsilon -= epsilon_decay_value
+
                 # 采样
                 next_actions = list(next_steps.keys())
                 next_grids = torch.stack([v[0] for v in next_steps.values()])
@@ -192,7 +204,6 @@ class DQNTrain:
                 loss = self.train_step()
                 if loss:
                     total_loss += loss
-                steps += 1
 
             recent_scores.append(final_score)
             if len(recent_scores) >= self.window_size:
@@ -200,16 +211,15 @@ class DQNTrain:
                 if avg_score > max_avg_score:
                     max_avg_score = avg_score
                     torch.save(self.train_model.state_dict(), f"{self.save_path}/DQN_best.pt")
-                    print(f"Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
+                    print(f"==> Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
 
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
             
             if epoch % self.fresh_epoch == 0:
-                print(f'{epoch}/{self.epochs} {loss} {final_score} {sum(recent_scores) / len(recent_scores)} {len(self.memory)}/{self.memory_size}')
-                if len(self.memory) > self.batch_size * 5:
-                    self.memory.clear()
-                # self.memory.clear()
-                self.target_model.load_state_dict(self.train_model.state_dict())
+                if loss:
+                    print(f'Epoch: {epoch} | Step: {self.total_steps} | Eps: {self.epsilon:.4f} | Loss: {loss:.4f} | Score: {final_score} | Avg Score: {sum(recent_scores) / len(recent_scores)}')
+                else:
+                    print(f'Epoch: {epoch} | Step: {self.total_steps} | Eps: {self.epsilon:.4f} | Loss: {loss} | Score: {final_score} | Avg Score: {sum(recent_scores) / len(recent_scores)}')
             if epoch % self.save_epoch == 0:
                 torch.save(self.train_model.state_dict(), f"{self.save_path}/DQN_{epoch}.pt")
