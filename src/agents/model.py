@@ -11,14 +11,15 @@ class TestModel(nn.Module):
 
 class TetrisRL(nn.Module):
     def __init__(self, 
-                 num_featurs = 5,
-                 board_height = 20,
-                 board_width = 10,
-                 grid_channel_in = 1):
+                 num_featurs=5,
+                 board_height=20,
+                 board_width=10,
+                 grid_channel_in=1,
+                 hidden_dim=256):
         super(TetrisRL, self).__init__()
-        self.fc1 = nn.Linear(num_featurs, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, 1)
+        self.fc1 = nn.Linear(num_featurs, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, 1)
         self._create_weights()
 
     def _create_weights(self):

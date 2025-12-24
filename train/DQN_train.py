@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import random
+from train.prioritized_replay import PrioritizedReplayBuffer
 from collections import deque
 
 class DQNTrain:
@@ -12,50 +13,51 @@ class DQNTrain:
         target_model,
         optimizer,
         criterion,
-        memory_size = 5000,
-        batch_size = 512,
-        window_size = 50,
-        gamma = 0.99,
-        height_penalty_scalar = 0.1,
-        steps_num = 3,
-        epochs = 3000,
-        fresh_epoch = 10,
-        save_epoch = 50,
-        epsilon = 1.0,
-        epsilon_min = 0.01,
-        epsilon_decay = 0.995):
-        self.save_path = save_path
+        memory_size=30000,
+        batch_size=512,
+        window_size=50,
+        gamma=0.99,
+        height_penalty_scalar=0.1,
+        epochs=5000,
+        fresh_epoch=10,
+        save_epoch=50,
+        epsilon=1.0,
+        epsilon_min=0.01, # 这里增大效果会更好吗
+        epsilon_decay=0.995):
+        self.save_path=save_path
         self.env = env
         self.train_model = train_model
         self.target_model = target_model
         self.optimizer = optimizer
         self.criterion = criterion
-        self.memory = deque(maxlen = memory_size)
+        self.memory = PrioritizedReplayBuffer(capacity=memory_size)
         self.batch_size = batch_size
         self.window_size = window_size
         self.gamma = gamma
         self.height_penalty_scalar = height_penalty_scalar
-        self.steps_num = steps_num
-        self.steps_buffer = deque(maxlen = self.steps_num)
         self.epochs = epochs
         self.fresh_epoch = fresh_epoch
         self.save_epoch = save_epoch
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
+        self.scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.5)
 
     def add_memory(self, state, target_q):
         """
         state: (grid, feat)
         target: real q value
         """
-        self.memory.append((state, target_q))
+        sample = (state, target_q)
+        self.memory.add(error=1.0, sample=sample)
 
     def train_step(self):
         if len(self.memory) < self.batch_size:
             return None
 
-        batch_data = random.sample(self.memory, self.batch_size)
+        batch_data, idxs, is_weights = self.memory.sample(self.batch_size)
+
+        is_weights = torch.FloatTensor(is_weights)
 
         batch_grids    = torch.stack([x[0][0] for x in batch_data])
         batch_feats    = torch.stack([x[0][1] for x in batch_data])
@@ -65,15 +67,23 @@ class DQNTrain:
             batch_grids = batch_grids.cuda()
             batch_feats = batch_feats.cuda()
             batch_target_q = batch_target_q.cuda()
+            is_weights = is_weights.cuda()
 
         # (batch_size, 1) -> (batch_size)
         predictions = self.train_model(batch_grids, batch_feats).squeeze(1)
-        
-        loss = self.criterion(predictions, batch_target_q)
+
+        loss_elementwise = (predictions - batch_target_q)  ** 2
+        loss = (loss_elementwise * is_weights).mean()
+
+        # loss = self.criterion(predictions, batch_target_q)
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.train_model.parameters(), 1.0)
         self.optimizer.step()
+
+        td_errors = torch.sqrt(loss_elementwise).detach().cpu().numpy()
+        self.memory.update(idxs, td_errors)
 
         return loss.item()
 
@@ -86,7 +96,6 @@ class DQNTrain:
 
         recent_scores = deque(maxlen = self.window_size)
         max_avg_score = 0
-        max_final_score = 0
 
         for epoch in range(self.epochs):
             self.env.reset()
@@ -175,20 +184,24 @@ class DQNTrain:
                     total_loss += loss
                 steps += 1
 
+            if len(self.memory) >= self.batch_size:
+                self.scheduler.step()
+            current_lr = self.scheduler.get_last_lr()[0]
+
             recent_scores.append(final_score)
             if len(recent_scores) >= self.window_size:
                 avg_score = sum(recent_scores) / len(recent_scores)
                 if avg_score > max_avg_score:
                     max_avg_score = avg_score
                     torch.save(self.train_model.state_dict(), f"{self.save_path}/DQN_best.pt")
-                    print(f"Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
+                    print(f"==>Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
 
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
             
             if epoch % self.fresh_epoch == 0:
-                print(f'{epoch}/{self.epochs} {loss} {final_score}')
-                if len(self.memory) > self.batch_size * 2:
+                print(f'Epoch: {epoch}/{self.epochs} | Loss: {loss} | Eps: {self.epsilon} | Avg score: {sum(recent_scores) / len(recent_scores)} | Final score: {final_score} | lr: {current_lr}')
+                if len(self.memory) > 5 * self.batch_size:
                     self.memory.clear()
                 self.target_model.load_state_dict(self.train_model.state_dict())
             if epoch % self.save_epoch == 0:
