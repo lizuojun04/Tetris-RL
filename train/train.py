@@ -6,8 +6,8 @@ from src.agents.model import TetrisRL
 
 save_path = './checkpoints'
 env = Tetris()
-train_model = TetrisRL()
-target_model = TetrisRL()
+train_model = TetrisRL(hidden_dim=64)
+target_model = TetrisRL(hidden_dim=64)
 optimizer = torch.optim.Adam(train_model.parameters(), lr=0.0001)
 criterion = nn.MSELoss()
 

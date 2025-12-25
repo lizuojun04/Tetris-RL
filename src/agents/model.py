@@ -15,7 +15,7 @@ class TetrisRL(nn.Module):
                  board_height=20,
                  board_width=10,
                  grid_channel_in=1,
-                 hidden_dim=256):
+                 hidden_dim=64):
         super(TetrisRL, self).__init__()
         self.fc1 = nn.Linear(num_featurs, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
