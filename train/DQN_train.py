@@ -204,7 +204,7 @@ class DQNTrain:
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
             
-            if epoch % self.fresh_epoch == 0:
+            if epoch % self.fresh_epoch == 0 and epoch != 0:
                 avg_score = 0
                 for num in range(self.fresh_epoch):
                     avg_score += recent_scores[-(num + 1)]
