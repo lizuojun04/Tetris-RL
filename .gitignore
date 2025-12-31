@@ -2,6 +2,8 @@ pyrightconfig.json
 *.mp4
 checkpoints/*
 !checkpoints/best/
+logs/*
+
 
 __pycache__/
 *.pyc
