@@ -76,3 +76,11 @@ hidden_dim=64
 ```
 66529.954
 417404
+
+实验数据
+- [ ] base
+- [ ] base + double
+- [ ] base + PER
+- [x] base + double + PER
+- [ ] base + multi-step
+- [ ] base + double + multi-step

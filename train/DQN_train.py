@@ -160,6 +160,7 @@ class DQNTrain:
                     # 实现 double DQN
                     # train_model 用来选 action
                     # target_model 用来评估 q value
+                    """
                     self.train_model.eval()
                     with torch.no_grad():
                         next_preds_from_train = self.train_model(n_grids, n_feats).squeeze(1)
@@ -169,11 +170,15 @@ class DQNTrain:
                     with torch.no_grad():
                         next_preds_from_target = self.target_model(n_grids, n_feats).squeeze(1)
                         max_q = next_preds_from_target[best_next_action_index].item()
-                    
+                    """
+                    with torch.no_grad():
+                        next_preds_from_target = self.target_model(n_grids, n_feats).squeeze(1)
+                        max_q = torch.max(next_preds_from_target).item()
+
                     # 加上缩放
                     target_q = reward + self.gamma * max_q
                     next_steps = next_next_steps
-
+                    
                 # 储存 q 值
                 target_q = torch.tensor(target_q, dtype=torch.float32)
                 self.add_memory(current_state_save, target_q)
@@ -194,13 +199,18 @@ class DQNTrain:
                 if avg_score > max_avg_score:
                     max_avg_score = avg_score
                     torch.save(self.train_model.state_dict(), f"{self.save_path}/DQN_best.pt")
-                    print(f"==>Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
+                    # print(f"==>Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
 
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
             
             if epoch % self.fresh_epoch == 0:
-                print(f'Epoch: {epoch}/{self.epochs} | Loss: {loss} | Eps: {self.epsilon} | Avg score: {sum(recent_scores) / len(recent_scores)} | Final score: {final_score} | lr: {current_lr}')
+                avg_score = 0
+                for num in range(self.fresh_epoch):
+                    avg_score += recent_scores[-(num + 1)]
+                avg_score /= self.fresh_epoch
+                # print(f'Epoch: {epoch}/{self.epochs} | Loss: {loss} | Eps: {self.epsilon} | Avg score: {sum(recent_scores) / len(recent_scores)} | Final score: {final_score} | lr: {current_lr}')
+                print(f'{epoch} {loss} {self.epsilon} {avg_score} {final_score} {current_lr}')
                 if len(self.memory) > 5 * self.batch_size:
                     self.memory.clear()
                 self.target_model.load_state_dict(self.train_model.state_dict())
