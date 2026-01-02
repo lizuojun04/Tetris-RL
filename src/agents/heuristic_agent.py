@@ -32,7 +32,7 @@ class HeuristicAgent:
             score = (self.weights["lines"] * lines +
                      self.weights["holes"] * holes +
                      self.weights["bumpiness"] * bumpiness +
-                     self.weights["total_height"] * total_height,
+                     self.weights["total_height"] * total_height +
                      self.weights["max_height"] * max_height)
 
             if score > best_score:
