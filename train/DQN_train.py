@@ -166,15 +166,18 @@ class DQNTrain:
                 if avg_score > max_avg_score:
                     max_avg_score = avg_score
                     torch.save(self.train_model.state_dict(), f"{self.save_path}/DQN_best.pt")
-                    print(f"Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
+                    # print(f"Epoch {epoch}: New Max Avg Score: {max_avg_score:.2f} (Saved best_avg.pt)")
 
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
-            
-            if epoch % self.fresh_epoch == 0:
-                print(f'{epoch}/{self.epochs} {loss} {final_score}')
+            if epoch % self.fresh_epoch == 0 and epoch != 0:
+                avg_score = 0
+                for num in range(self.fresh_epoch):
+                    avg_score += recent_scores[-(num + 1)]
+                avg_score /= self.fresh_epoch            
                 if len(self.memory) > self.batch_size * 2:
                     self.memory.clear()
                 self.target_model.load_state_dict(self.train_model.state_dict())
+                print(f'{epoch} {loss} {self.epsilon} {avg_score} {final_score}')
             if epoch % self.save_epoch == 0:
                 torch.save(self.train_model.state_dict(), f"{self.save_path}/DQN_{epoch}.pt")

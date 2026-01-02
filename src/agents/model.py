@@ -47,11 +47,11 @@ class TetrisRL(nn.Module):
 
 class TetrisRL_conv(nn.Module):
     def __init__(self, 
-                 num_featurs = 4,
+                 num_featurs = 5,
                  board_height = 20,
                  board_width = 10,
                  grid_channel_in = 1):
-        super(TetrisRL, self).__init__()
+        super(TetrisRL_conv, self).__init__()
 
         self.conv1 = nn.Conv2d(in_channels = grid_channel_in,
                                out_channels = 32,
